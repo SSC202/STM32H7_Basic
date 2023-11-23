@@ -1,5 +1,27 @@
 /**
  * @file    wtr_can 配置
+ * @note    1. 如果使用STM32H7系列的FDCAN（通常为FDCAN1），需要进行以下配置流程：
+ *          (1) CubeMX 配置：
+ *              Frame Format            ----        Classis Mode
+ *              Mode                    ----        Normal  Mode
+ *              Rx FiFO0 Elmts Nbr      ----        32
+ *              Tx Fifo Queue Elmts Nbr ----        32
+ *              Std Filters Nbr         ----        1
+ *              其余为默认配置
+ *              
+ *              对于时钟，进行以下配置：
+ *              主频540Mhz，预分频27，Normal Time Seg1/Seg2 为2，此时波特率为 1000000 bit/s
+ *          (2) 代码配置：
+ *              使用以下代码进行初始化
+ *                  fdcan1.FDCAN_Rx_Filter_Init();
+                    fdcan1.FDCAN_Start();
+                    fdcan1.FDCAN_Interrupt_Init();
+                
+                注意：此库指定了FDCAN1的配置，如果使用其他型号的FDCAN,请自行修改。
+            2. 如果使用STM32F4以下系列的CAN（通常为CAN1），需要进行以下配置流程：
+            (1) CubeMX 配置：
+                主频180Mhz，预分频9，Normal Time Seg1为3，Normal Time Seg2为1，此时波特率为 1000000 bit/s
+ * 
  */
 #ifndef __WTR_CAN_H
 #define __WTR_CAN_H
