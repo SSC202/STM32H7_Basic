@@ -160,7 +160,7 @@ FDCAN 提供发送 event FIFO。 该 Tx event FIFO 的使用是可选的。 FDCA
 
 为了将 Tx event 链接到 Tx event FIFO 元素，将来自已发送 Tx buffer 的消息标记复制到 Tx event FIFO 元素。
 
-仅当 Tx buffer 元素中的 EFC 位（存储 Tx 事件）等于 1 时，事件才存储在 Tx event FIFO 中。当 Tx event FIFO 已满时，不会再有其他元素写入 Tx event FIFO，直到至少有一个元素被写入为止。读出后，Tx event FIFO 获取索引增加。如果在 Tx event FIFO 已满时发生 Tx event，则这事件被丢弃。**为避免 Tx event FIFO 溢出，可以使用 Tx event FIFO WaterMark**。
+仅当 Tx buffer 元素中的 EFC 位（存储 Tx 事件）等于 1 时，事件才存储在 Tx event FIFO 中。当 Tx event FIFO 已满时，不会再有其他元素写入 Tx event FIFO，直到至少有一个元素被读出为止。读出后，Tx event FIFO 获取索引增加。如果在 Tx event FIFO 已满时发生 Tx event，则这事件被丢弃。**为避免 Tx event FIFO 溢出，可以使用 Tx event FIFO WaterMark**。
 
 - 为了使外设传输元素，该元素在定义的存储空间内，并且传输开始。 传输的元素存储在 Tx buffer中，用户可以选择使用的机制：专用的 Tx buffer 或 Tx queue 或 Tx FIFO。FDCAN 最多支持 32 个元素。每个元素存储标识符，DLC，控制位（ESI，XTD，RTR，BRS，FDF），数据字段，位字段消息标记和事件 FIFO 控制位，仅一条消息。
 
@@ -189,3 +189,411 @@ FDCAN 提供发送 event FIFO。 该 Tx event FIFO 的使用是可选的。 FDCA
 
 ## 2. STM32H7 FDCAN HAL库函数
 
+### 结构体简介（对应CubeMX配置）
+
+#### FDCAN 总线初始化结构体`FDCAN_InitTypeDef`
+
+```c
+typedef struct
+{
+ 	uint32_t FrameFormat; 				     /*!< Specifies the FDCAN frame format.This parameter can be a value of @ref FDCAN_frame_format */
+ 	uint32_t Mode; 							/*!< Specifies the FDCAN mode.This parameter can be a value of @ref FDCAN_operating_mode */
+ 	FunctionalState AutoRetransmission; 	  /*!< Enable or disable the automatic retransmission mode.This parameter can be set to ENABLE or DISABLE */
+    FunctionalState TransmitPause; 			  /*!< Enable or disable the Transmit Pause feature.this parameter can be set to ENABLE or DISABLE */
+ 	FunctionalState ProtocolException; 		  /*!< Enable or disable the Protocol Exception Handling.This parameter can be set to ENABLE or DISABLE */
+ 	uint32_t NominalPrescaler; 				 /*!< Specifies the value by which the oscillator frequency is divided for generating the nominal bit time quanta.This parameter must be a number between 1 and 512 */
+ 	uint32_t NominalSyncJumpWidth;            /*!< Specifies the maximum number of time quanta the FDCAN hardware is allowed to lengthen or shorten a bit to perform resynchronization.This parameter must be a number between 1 and 128 */
+ 	uint32_t NominalTimeSeg1; 				 /*!< Specifies the number of time quanta in Bit Segment 1.This parameter must be a number between 2 and 256 */
+ 	uint32_t NominalTimeSeg2; 				 /*!< Specifies the number of time quanta in Bit Segment 2.This parameter must be a number between 2 and 128 */
+ 	uint32_t DataPrescaler; 				 /*!< Specifies the value by which the oscillator frequency is divided for generating the data bit time quanta.This parameter must be a number between 1 and 32 */
+ 	uint32_t DataSyncJumpWidth; 			  /*!< Specifies the maximum number of time quanta the FDCAN hardware is allowed to lengthen or shorten a data bit to perform resynchronization.This parameter must be a number between 1 and 16 */
+ 	uint32_t DataTimeSeg1; 					  /*!< Specifies the number of time quanta in Data Bit Segment 1.This parameter must be a number between 1 and 32 */
+ 	uint32_t DataTimeSeg2; 					  /*!< Specifies the number of time quanta in Data Bit Segment 2.This parameter must be a number between 1 and 16 */
+ 	uint32_t MessageRAMOffset; 				   /*!< Specifies the message RAM start address.This parameter must be a number between 0 and 2560 */
+ 	uint32_t StdFiltersNbr; 				   /*!< Specifies the number of standard Message ID filters.This parameter must be a number between 0 and 128 */
+ 	uint32_t ExtFiltersNbr; 				   /*!< Specifies the number of extended Message ID filters.This parameter must be a number between 0 and 64 */
+ 	uint32_t RxFifo0ElmtsNbr; 				   /*!< Specifies the number of Rx FIFO0 Elements.This parameter must be a number between 0 and 64 */
+ 	uint32_t RxFifo0ElmtSize; 				   /*!< Specifies the Data Field Size in an Rx FIFO 0 element.This parameter can be a value of @ref FDCAN_data_field_size */
+	uint32_t RxFifo1ElmtsNbr; 				   /*!< Specifies the number of Rx FIFO 1 Elements.This parameter must be a number between 0 and 64 */
+ 	uint32_t RxFifo1ElmtSize; 				   /*!< Specifies the Data Field Size in an Rx FIFO 1 element.This parameter can be a value of @ref FDCAN_data_field_size */
+    uint32_t RxBuffersNbr; 						/*!< Specifies the number of Dedicated Rx Buffer elements.This parameter must be a number between 0 and 64 */
+ 	uint32_t RxBufferSize;	 					/*!< Specifies the Data Field Size in an Rx Buffer element.This parameter can be a value of @ref FDCAN_data_field_size */
+ 	uint32_t TxEventsNbr; 						/*!< Specifies the number of Tx Event FIFO elements.This parameter must be a number between 0 and 32 */
+	uint32_t TxBuffersNbr; 						/*!< Specifies the number of Dedicated Tx Buffers.This parameter must be a number between 0 and 32 */
+ 	uint32_t TxFifoQueueElmtsNbr; 				/*!< Specifies the number of Tx Buffers used for Tx FIFO/Queue.This parameter must be a number between 0 and 32 */
+ 	uint32_t TxFifoQueueMode; 					/*!< Tx FIFO/Queue Mode selection.This parameter can be a value of @ref FDCAN_txFifoQueue_Mode */
+ 	uint32_t TxElmtSize; 						/*!< Specifies the Data Field Size in a Tx Element.This parameter can be a value of @ref FDCAN_data_field_size */
+} FDCAN_InitTypeDef;
+```
+
+- `FrameFormat`：设置帧格式
+
+```c
+#define FDCAN_FRAME_CLASSIC ((uint32_t)0x00000000U) 					  /* 经典 CAN 模式 */
+#define FDCAN_FRAME_FD_NO_BRS ((uint32_t)FDCAN_CCCR_FDOE) 				  /* FD CAN 不带可变波特率 */
+#define FDCAN_FRAME_FD_BRS ((uint32_t)(FDCAN_CCCR_FDOE | FDCAN_CCCR_BRSE))  /* FD CAN 带可变波特率 */
+```
+
+- `Mode`：设置CAN操作模式
+
+```c
+#define FDCAN_MODE_NORMAL ((uint32_t)0x00000000U) 						/*!< 正常模式 */
+#define FDCAN_MODE_RESTRICTED_OPERATION ((uint32_t)0x00000001U) 		 /*!< 有限制的操作模式 */
+#define FDCAN_MODE_BUS_MONITORING ((uint32_t)0x00000002U) 				 /*!< 总线监测模式 */
+#define FDCAN_MODE_INTERNAL_LOOPBACK ((uint32_t)0x00000003U) 			 /*!< 内部环回模式 */
+#define FDCAN_MODE_EXTERNAL_LOOPBACK ((uint32_t)0x00000004U) 			 /*!< 外部环回模式 */
+```
+
+- `AutoRetransmission`：使能自动重传
+
+- `TransmitPause`：使能或者禁止传输暂停特性。
+- `ProtocolException`：使能或者禁止协议异常管理。
+- `Nominal Prescaler`：用于 CAN FD 仲裁阶段分频设置，产生标称位时间量，参数范围 1-512。（预分频系数）
+- `NominalSyncJumpWidth`：设置 FD CAN 仲裁阶段最大支持的时间量来加长或者缩短一个 bit 来实现再同步，参数范围 1-128。（通常设置为1）
+- `NominalTimeSeg1`：设置仲裁阶段 Bit Segment 1 的时间量，范围 2 – 256。（设置此值以配置波特率
+- `NominalTimeSeg2`：设置仲裁阶段 Bit Segment 2 的时间量，范围 2 – 128。
+
+- `DataPrescaler`：用于 CAN FD 数据阶段分频设置，范围 1-32。
+
+- `DataSyncJumpWidth`：设置FD CAN数据阶段最大支持的时间量来加长或者缩短一个bit来实现数据再同步，参数范围1-16。
+
+- `DataTimeSeg1`：设置数据阶段 Data Bit Segment 1 的时间量，范围 1 – 32。
+
+- `DataTimeSeg2`：设置数据阶段 Data Bit Segment 2 的时间量，范围 1 – 16。
+
+- `MessageRAMOffset`：设置消息 RAM 起始地址，范围 0 到 2560。（对于FDCAN1无需设置偏移）
+
+- `StdFiltersNbr`：标准 ID 过滤个数，范围 0 到 128。（按照需求设置）
+
+- `ExtFiltersNbr`：扩展 ID 过滤个数，范围 0 到 64。（按照需求设置）
+
+- `RxFifo0ElmtsNbr`：RX FIFO0 元素个数，范围 0 到 64。（设置为32即可）
+
+- `RxFifo0ElmtSize`：RX FIFO0 每个元素中数据大小。
+
+ ```c
+ #define FDCAN_DATA_BYTES_8 ((uint32_t)0x00000004U)  /*!< 8 bytes data field */
+ #define FDCAN_DATA_BYTES_12 ((uint32_t)0x00000005U) /*!< 12 bytes data field */
+ #define FDCAN_DATA_BYTES_16 ((uint32_t)0x00000006U) /*!< 16 bytes data field */
+ #define FDCAN_DATA_BYTES_20 ((uint32_t)0x00000007U) /*!< 20 bytes data field */
+ #define FDCAN_DATA_BYTES_24 ((uint32_t)0x00000008U) /*!< 24 bytes data field */
+ #define FDCAN_DATA_BYTES_32 ((uint32_t)0x0000000AU) /*!< 32 bytes data field */
+ #define FDCAN_DATA_BYTES_48 ((uint32_t)0x0000000EU) /*!< 48 bytes data field */
+ #define FDCAN_DATA_BYTES_64 ((uint32_t)0x00000012U) /*!< 64 bytes data field */
+ ```
+
+- `RxFifo1ElmtsNbr`：RX FIFO1 个数，范围 0 到 64。
+
+- `RxFifo1ElmtSize`：RX FIFO1 每个元素中数据大小。
+
+- `RxBuffersNbr`：设置 Rx Buffer 元素个数，范围 0 - 64：
+
+- `RxBuffersSize`：设置 Rx Buffer 元素中每个数据大小，范围 0 - 64：
+
+- `TxEventsNbr`：Tx Event FIFO 元素个数，范围 0 到 32。
+
+- `TxBuffersNbr`：设置专用的 Tx Buffer 元素个数，范围 0 到 32。
+
+- `TxFifoQueueElmtsNbr`：设置用于 Tx FIFO/Queue 的 Tx Buffers 个数。范围 0 到 32。
+
+- `TxFifoQueueMode`：设置 FIFO 模式或者 QUEUE 队列模式。
+
+```c
+#define FDCAN_TX_FIFO_OPERATION ((uint32_t)0x00000000U)      /*!< FIFO mode */
+#define FDCAN_TX_QUEUE_OPERATION ((uint32_t)FDCAN_TXBC_TFQM) /*!< Queue mode */
+```
+
+- `TxElmtSize`：设置 Tx Element 中的数据域大小。
+
+#### FDCAN 总线过滤结构体 `FDCAN_FilterTypeDef`
+
+```c
+typedef struct
+{
+ 	uint32_t IdType; 		    /*!< Specifies the identifier type. This parameter can be a value of @ref FDCAN_id_type */
+ 	uint32_t FilterIndex; 	 	/*!< Specifies the filter which will be initialized.This parameter must be a number between: - 0 and 127, if IdType is FDCAN_STANDARD_ID - 0 and 63, if IdType is FDCAN_EXTENDED_ID */
+ 	uint32_t FilterType; 		/*!< Specifies the filter type.This parameter can be a value of @ref FDCAN_filter_type.The value FDCAN_EXT_FILTER_RANGE_NO_EIDM is permitted only when IdType is FDCAN_EXTENDED_ID.This parameter is ignored if FilterConfig is set to FDCAN_FILTER_TO_RXBUFFER */
+ 	uint32_t FilterConfig; 		/*!< Specifies the filter configuration.This parameter can be a value of @ref FDCAN_filter_config */
+ 	uint32_t FilterID1; 		/*!< Specifies the filter identification 1.This parameter must be a number between: - 0 and 0x7FF, if IdType is FDCAN_STANDARD_ID - 0 and 0x1FFFFFFF, if IdType is FDCAN_EXTENDED_ID */
+ 	uint32_t FilterID2; 		/*!< Specifies the filter identification 2.This parameter is ignored if FilterConfig is set to FDCAN_FILTER_TO_RXBUFFER.This parameter must be a number between: - 0 and 0x7FF, if IdType is FDCAN_STANDARD_ID - 0 and 0x1FFFFFFF, if IdType is FDCAN_EXTENDED_ID */
+ 	uint32_t RxBufferIndex; 	/*!< Contains the index of the Rx buffer in which the matching message will be stored.This parameter must be a number between 0 and 63.This parameter is ignored if FilterConfig is different from FDCAN_FILTER_TO_RXBUFFER */
+ 	uint32_t IsCalibrationMsg; /*!< Specifies whether the filter is configured for calibration messages.This parameter is ignored if FilterConfig is different from FDCAN_FILTER_TO_RXBUFFER.This parameter can be: - 0 : ordinary message - 1 : calibration message */
+} FDCAN_FilterTypeDef;
+```
+
+- `IdType`：用于设置标准 ID 和扩展 ID。
+
+```c
+#define FDCAN_STANDARD_ID ((uint32_t)0x00000000U) /*!< 标准 ID */
+#define FDCAN_EXTENDED_ID ((uint32_t)0x40000000U) /*!< 扩展 ID */
+```
+
+- `FilterIndex`：用于过滤索引，如果是标准 ID，范围 0 到 127。如果是扩展 ID，范围 0 到 64。
+
+- `FilterType`：用于设置过滤类型。如果成员 FilterConfig 设置为 FDCAN_FILTER_TO_RXBUFFER，本参数将不起
+
+  作用。
+
+  ```c
+  #define FDCAN_FILTER_RANGE ((uint32_t)0x00000000U) /*!< 范围过滤从 FilterID1 到 FilterID2 */
+  #define FDCAN_FILTER_DUAL ((uint32_t)0x00000001U)  /*!< 专用 ID 过滤，FilterID1 或者 FilterID2 */
+  /*!< 精度屏蔽过滤，FilterID1 = filter, FilterID2 = mask */
+  #define FDCAN_FILTER_MASK ((uint32_t)0x00000002U) 
+  /*!< 仅 ID 扩展模式支持此参数，范围从 FilterID1 到 FilterID2, EIDM mask not applied */
+  #define FDCAN_FILTER_RANGE_NO_EIDM ((uint32_t)0x00000003U)
+  ```
+
+- `FilterConfig`：用于设置过滤类型。
+
+```c
+#define FDCAN_FILTER_DISABLE ((uint32_t)0x00000000U) 	     //禁止过滤
+#define FDCAN_FILTER_TO_RXFIFO0 ((uint32_t)0x00000001U)      //如果过滤匹配，将数据保存到 Rx FIFO 0
+#define FDCAN_FILTER_TO_RXFIFO1 ((uint32_t)0x00000002U)      //如果过滤匹配，将数据保存到 Rx FIFO 1
+#define FDCAN_FILTER_REJECT ((uint32_t)0x00000003U) 	     //如果过滤匹配，拒绝此 ID
+#define FDCAN_FILTER_HP ((uint32_t)0x00000004U) 	    	//如果过滤匹配，设置高优先级
+#define FDCAN_FILTER_TO_RXFIFO0_HP ((uint32_t)0x00000005U)   //如果过滤匹配，设置高优先级并保存到 FIFO 0
+#define FDCAN_FILTER_TO_RXFIFO1_HP ((uint32_t)0x00000006U)   //如果过滤匹配，设置高优先级并保存到 FIFO 1
+#define FDCAN_FILTER_TO_RXBUFFER ((uint32_t)0x00000007U)     //如果过滤匹配，保存到 Rx Buffer，并忽略 FilterType配置
+```
+
+- `FilterID1`：用于设置过滤 ID1。如果 ID 类型是 `FDCAN_STANDARD_ID`，范围 0 到 0x7FF。如果 ID 类型是`FDCAN_EXTENDED_ID`，范围是 0 到 0x1FFFFFFF。
+
+- `FilterID2`：用于设置过滤 ID2。如果 FilterConfig 设置为 `FDCAN_FILTER_TO_RXBUFFER`，此参数不起作用。如果 ID 类型是 `FDCAN_STANDARD_ID`，范围 0 到 0x7FF。如果 ID 类型是 `FDCAN_EXTENDED_ID`，范围是 0 到 0x1FFFFFFF。
+
+- `RxBufferIndex`：匹配消息存储到 Rx buffer 中的索引。参数范围 0 到 63。如果 FilterConfig 设置为`FDCAN_FILTER_TO_RXBUFFER`，此参数不起作用。
+
+- `IsCalibrationMsg`：用于设置是否配置校准消息。如果 FilterConfig 设置为 `FDCAN_FILTER_TO_RXBUFFER`，此参数不起作用。0 ： 表示正常消息。1 ： 标志校准消息
+
+#### FDCAN 总线消息发送结构体 `FDCAN_TxHeaderTypeDef`
+
+```c
+typedef struct
+{
+ 	uint32_t Identifier; 			/*!< Specifies the identifier.This parameter must be a number between:- 0 and 0x7FF, if IdType is FDCAN_STANDARD_ID - 0 and 0x1FFFFFFF, if IdType is FDCAN_EXTENDED_ID */
+ 	uint32_t IdType; 				/*!< Specifies the identifier type for the message that will be transmitted.This parameter can be a value of @ref FDCAN_id_type */
+ 	uint32_t TxFrameType; 			/*!< Specifies the frame type of the message that will be transmitted.This parameter can be a value of @ref FDCAN_frame_type */
+ 	uint32_t DataLength; 			/*!< Specifies the length of the frame that will be transmitted.This parameter can be a value of @ref FDCAN_data_length_code */
+ 	uint32_t ErrorStateIndicator; 	 /*!< Specifies the error state indicator.This parameter can be a value of @ref FDCAN_error_state_indicator */
+ 	uint32_t BitRateSwitch; 		/*!< Specifies whether the Tx frame will be transmitted with or without bit rate switching.This parameter can be a value of @ref FDCAN_bit_rate_switching */
+ 	uint32_t FDFormat; 				/*!< Specifies whether the Tx frame will be transmitted in classic or FD format.This parameter can be a value of @ref FDCAN_format */
+ 	uint32_t TxEventFifoControl; 	 /*!< Specifies the event FIFO control.This parameter can be a value of @ref FDCAN_EFC */
+ 	uint32_t MessageMarker; 		/*!< Specifies the message marker to be copied into Tx Event FIFO element for identification of Tx message status.This parameter must be a number between 0 and 0xFF */
+} FDCAN_TxHeaderTypeDef;
+```
+
+- `Identifier`：用于设置 ID，如果 `IdType` 是标准 `FDCAN_STANDARD_ID`，范围 0 到 0x7FF，如果 `IdType` 是`FDCAN_EXTENDED_ID` 扩展 ID，范围 0 到 0x1FFFFFFF。
+
+- `IdType`：用于设置标准 ID 或者扩展 ID。
+
+```c
+#define FDCAN_STANDARD_ID ((uint32_t)0x00000000U) /*!< 标准 ID */
+#define FDCAN_EXTENDED_ID ((uint32_t)0x40000000U) /*!< 扩展 ID */
+```
+
+- `TxFrameType`：用于设置帧类型，数据帧或遥控帧。
+
+```c
+#define FDCAN_DATA_FRAME ((uint32_t)0x00000000U)   /*!< 数据帧 */
+#define FDCAN_REMOTE_FRAME ((uint32_t)0x20000000U) /*!< 遥控帧 */
+```
+
+- `DataLength`：用于设置数据长度。
+
+```c
+#define FDCAN_DLC_BYTES_0 ((uint32_t)0x00000000U) /*!< 0 bytes data field */
+#define FDCAN_DLC_BYTES_1 ((uint32_t)0x00010000U) /*!< 1 bytes data field */
+#define FDCAN_DLC_BYTES_2 ((uint32_t)0x00020000U) /*!< 2 bytes data field */
+#define FDCAN_DLC_BYTES_3 ((uint32_t)0x00030000U) /*!< 3 bytes data field */
+#define FDCAN_DLC_BYTES_4 ((uint32_t)0x00040000U) /*!< 4 bytes data field */
+#define FDCAN_DLC_BYTES_5 ((uint32_t)0x00050000U) /*!< 5 bytes data field */
+#define FDCAN_DLC_BYTES_6 ((uint32_t)0x00060000U) /*!< 6 bytes data field */
+#define FDCAN_DLC_BYTES_7 ((uint32_t)0x00070000U) /*!< 7 bytes data field */
+#define FDCAN_DLC_BYTES_8 ((uint32_t)0x00080000U) /*!< 8 bytes data field */
+#define FDCAN_DLC_BYTES_12 ((uint32_t)0x00090000U) /*!< 12 bytes data field */
+#define FDCAN_DLC_BYTES_16 ((uint32_t)0x000A0000U) /*!< 16 bytes data field */
+#define FDCAN_DLC_BYTES_20 ((uint32_t)0x000B0000U) /*!< 20 bytes data field */
+#define FDCAN_DLC_BYTES_24 ((uint32_t)0x000C0000U) /*!< 24 bytes data field */
+#define FDCAN_DLC_BYTES_32 ((uint32_t)0x000D0000U) /*!< 32 bytes data field */
+#define FDCAN_DLC_BYTES_48 ((uint32_t)0x000E0000U) /*!< 48 bytes data field */
+#define FDCAN_DLC_BYTES_64 ((uint32_t)0x000F0000U) /*!< 64 bytes data field */
+```
+
+- `ErrorStateIndicator`：用于设置错误状态指示。
+
+```c
+#define FDCAN_ESI_ACTIVE ((uint32_t)0x00000000U)  /*!< 传输节点 error active */
+#define FDCAN_ESI_PASSIVE ((uint32_t)0x80000000U) /*!< 传输节点 error passive */
+```
+
+- `BitRateSwitch`：用于设置发送是否波特率可变。
+
+```c
+#define FDCAN_BRS_OFF ((uint32_t)0x00000000U) /*!< FDCAN 帧发送/接收不带波特率可变 */
+#define FDCAN_BRS_ON ((uint32_t)0x00100000U)  /*!< FDCAN 帧发送/接收带波特率可变 */
+```
+
+- `FDFormat`：用于设置发送帧是经典格式还是 CANFD 格式。
+
+```c
+#define FDCAN_CLASSIC_CAN ((uint32_t)0x00000000U) /*!< 帧发送/接收使用经典 CAN */
+#define FDCAN_FD_CAN ((uint32_t)0x00200000U)      /*!< 帧发送/接收使用 FDCAN 格式 */
+```
+
+- `TxEventFifoControl`：用于设置发送事件 FIFO 控制。
+
+```c
+#define FDCAN_NO_TX_EVENTS ((uint32_t)0x00000000U)    /*!< 不存储 Tx events */
+#define FDCAN_STORE_TX_EVENTS ((uint32_t)0x00800000U) /*!< 存储 Tx events */
+```
+
+- `MessageMarker`：用于设置复制到 TX EVENT FIFO 的消息 Marker，来识别消息状态，范围 0 到 0xFF。
+
+#### FDCAN 总线消息接收结构体 `FDCAN_RxHeaderTypeDef`
+
+```c
+typedef struct
+{
+ 	uint32_t Identifier; 		   /*!< Specifies the identifier.This parameter must be a number between: - 0 and 0x7FF, if IdType is FDCAN_STANDARD_ID - 0 and 0x1FFFFFFF, if IdType is FDCAN_EXTENDED_ID */
+    uint32_t IdType; 			   /*!< Specifies the identifier type of the received message.This parameter can be a value of @ref FDCAN_id_type */
+ 	uint32_t RxFrameType; 		   /*!< Specifies the the received message frame type.This parameter can be a value of @ref FDCAN_frame_type */
+ 	uint32_t DataLength; 		   /*!< Specifies the received frame length.This parameter can be a value of @ref FDCAN_data_length_code */
+ 	uint32_t ErrorStateIndicator; 	/*!< Specifies the error state indicator. This parameter can be a value of @ref FDCAN_error_state_indicator */
+ 	uint32_t BitRateSwitch; 	    /*!< Specifies whether the Rx frame is received with or without bit rate switching.This parameter can be a value of @ref FDCAN_bit_rate_switching */
+ 	uint32_t FDFormat;               /*!< Specifies whether the Rx frame is received in classic or FD format.This parameter can be a value of @ref FDCAN_format */
+ 	uint32_t RxTimestamp;            /*!< Specifies the timestamp counter value captured on start of frame reception.This parameter must be a number between 0 and 0xFFFF */
+ 	uint32_t FilterIndex; 			/*!< Specifies the index of matching Rx acceptance filter element.This parameter must be a number between: - 0 and 127, if IdType is FDCAN_STANDARD_ID - 0 and 63, if IdType is FDCAN_EXTENDED_ID */
+ 	uint32_t IsFilterMatchingFrame;  /*!< Specifies whether the accepted frame did not match any Rx filter.Acceptance of non-matching frames may be enabled via HAL_FDCAN_ConfigGlobalFilter().This parameter can be 0 or 1 */
+} FDCAN_RxHeaderTypeDef;
+```
+
+- `Identifier`：用于设置 ID，如果 IdType 是标准`FDCAN_STANDARD_ID`，范围 0 到 0x7FF，如果 IdType 是`FDCAN_EXTENDED_ID`扩展 ID，范围 0 到 0x1FFFFFFF。
+
+- `IdType`：用于设置标志 ID 或者扩展 ID
+
+- `RxFrameType`：用于设置接收帧类型，数据帧或遥控帧
+
+- `DataLength`：用于设置数据长度。
+
+- `ErrorStateIndicator`：用于设置错误状态指示：
+
+- `BitRateSwitch`：用于设置接收是否带波特率切换
+
+- `FDFormat`：用于设置接收帧是经典格式还是 CANFD 格式
+
+- `RxTimestamp`：用于设置帧接收时间戳，范围 0 到 0xFFFF。 
+
+- `FilterIndex`：用于设置接收过滤索引。如果是标准 ID，范围 0 到 127，如果是扩展 ID，范围 0 到 63。 
+
+- `IsFilterMatchingFrame`：用于设置是否接收非匹配帧，通过函数 `HAL_FDCAN_ConfigGlobalFilter()` 可以使能。0：表示不接受。1：表示接收。
+
+### HAL 库函数
+
+```c
+/**
+  * @brief	FDCAN 初始化函数
+  */
+HAL_StatusTypeDef HAL_FDCAN_Init(FDCAN_HandleTypeDef *hfdcan);
+
+/**
+  * @brief 	FDCAN 过滤器配置函数
+  * @param	hfdcan			FDCAN句柄
+  * @param	sFilterConfig	 FDCAN过滤器配置结构体
+  */
+HAL_StatusTypeDef HAL_FDCAN_ConfigFilter(FDCAN_HandleTypeDef *hfdcan, FDCAN_FilterTypeDef *sFilterConfig);
+
+/**
+  * @brief	FDCAN 水印设置函数
+  * @param	hfdcan			FDCAN句柄
+  * @param	FIFO 			水印对应的FIFO，FDCAN_CFG_TX_EVENT_FIFO，FDCAN_CFG_RX_FIFO0，FDCAN_CFG_RX_FIFO1
+  * @param	Watermark		水印中断产生时FIFO内的消息数
+  */
+HAL_StatusTypeDef HAL_FDCAN_ConfigFifoWatermark(FDCAN_HandleTypeDef *hfdcan, uint32_t FIFO, uint32_t 
+Watermark);
+```
+
+```c
+/**
+  * @brief	FDCAN 中断设置函数
+  * @param	hfdcan			FDCAN句柄
+  * @param	ActiveITs		中断类型
+  * @param	Tx Buffer Indexes
+  */
+HAL_StatusTypeDef HAL_FDCAN_ActivateNotification(FDCAN_HandleTypeDef *hfdcan, uint32_t ActiveITs, uint32_t 
+BufferIndexes);
+
+// ActiveITs 可为以下宏定义之一
+#define FDCAN_IT_TX_COMPLETE FDCAN_IE_TCE 		 			  /*!< Transmission Completed */
+#define FDCAN_IT_TX_ABORT_COMPLETE FDCAN_IE_TCFE  			   /*!< Transmission Cancellation Finished */
+#define FDCAN_IT_TX_FIFO_EMPTY FDCAN_IE_TFEE 	 			   /*!< Tx FIFO Empty */
+#define FDCAN_IT_RX_HIGH_PRIORITY_MSG FDCAN_IE_HPME 	 	    /*!< High priority message received */
+#define FDCAN_IT_RX_BUFFER_NEW_MESSAGE FDCAN_IE_DRXE 	 	    /*!< At least one received message stored into a Rx Buffer */
+#define FDCAN_IT_TIMESTAMP_WRAPAROUND FDCAN_IE_TSWE 	 	    /*!< Timestamp counter wrapped around */
+#define FDCAN_IT_TIMEOUT_OCCURRED FDCAN_IE_TOOE 		 	   /*!< Timeout reached */
+#define FDCAN_IT_CALIB_STATE_CHANGED (FDCANCCU_IE_CSCE << 30) 	/*!< Clock calibration state changed */
+#define FDCAN_IT_CALIB_WATCHDOG_EVENT (FDCANCCU_IE_CWEE << 30)  /*!< Clock calibration watchdog event occurred */
+#define FDCAN_IT_TX_EVT_FIFO_ELT_LOST FDCAN_IE_TEFLE 			/*!< Tx Event FIFO element lost */
+#define FDCAN_IT_TX_EVT_FIFO_FULL FDCAN_IE_TEFFE 			    /*!< Tx Event FIFO full */
+#define FDCAN_IT_TX_EVT_FIFO_WATERMARK FDCAN_IE_TEFWE 			/*!< Tx Event FIFO fill level reached watermark */
+#define FDCAN_IT_TX_EVT_FIFO_NEW_DATA FDCAN_IE_TEFNE 			/*!< Tx Handler wrote Tx Event FIFO element */
+#define FDCAN_IT_RX_FIFO0_MESSAGE_LOST FDCAN_IE_RF0LE 			/*!< Rx FIFO 0 message lost */
+#define FDCAN_IT_RX_FIFO0_FULL FDCAN_IE_RF0FE 				    /*!< Rx FIFO 0 full */
+#define FDCAN_IT_RX_FIFO0_WATERMARK FDCAN_IE_RF0WE 				/*!< Rx FIFO 0 fill level reached watermark */
+#define FDCAN_IT_RX_FIFO0_NEW_MESSAGE FDCAN_IE_RF0NE 			/*!< New message written to Rx FIFO 0 */
+#define FDCAN_IT_RX_FIFO1_MESSAGE_LOST FDCAN_IE_RF1LE 			/*!< Rx FIFO 1 message lost */
+#define FDCAN_IT_RX_FIFO1_FULL FDCAN_IE_RF1FE 				    /*!< Rx FIFO 1 full */
+#define FDCAN_IT_RX_FIFO1_WATERMARK FDCAN_IE_RF1WE 				/*!< Rx FIFO 1 fill level reached watermark */
+#define FDCAN_IT_RX_FIFO1_NEW_MESSAGE FDCAN_IE_RF1NE 			/*!< New message written to Rx FIFO 1 */
+#define FDCAN_IT_RAM_ACCESS_FAILURE FDCAN_IE_MRAFE 				/*!< Message RAM access failure occurred */
+#define FDCAN_IT_ERROR_LOGGING_OVERFLOW FDCAN_IE_ELOE 			/*!< Overflow of FDCAN Error Logging Counter occurred */
+#define FDCAN_IT_RAM_WATCHDOG FDCAN_IE_WDIE 				    /*!< Message RAM Watchdog event due to missing READY */
+#define FDCAN_IT_ARB_PROTOCOL_ERROR FDCAN_IE_PEAE 				/*!< Protocol error in arbitration phase detected */
+#define FDCAN_IT_DATA_PROTOCOL_ERROR FDCAN_IE_PEDE 				/*!< Protocol error in data phase detected */
+#define FDCAN_IT_RESERVED_ADDRESS_ACCESS FDCAN_IE_ARAE 			/*!< Access to reserved address occurred */
+#define FDCAN_IT_ERROR_PASSIVE FDCAN_IE_EPE 				   /*!< Error_Passive status changed */
+#define FDCAN_IT_ERROR_WARNING FDCAN_IE_EWE 					/*!< Error_Warning status changed */
+#define FDCAN_IT_BUS_OFF FDCAN_IE_BOE 						   /*!< Bus_Off status changed */
+```
+
+```c
+/**
+  * @brief	FDCAN 启动函数
+  * @param	hfdcan			FDCAN句柄
+  */
+HAL_StatusTypeDef HAL_FDCAN_Start(FDCAN_HandleTypeDef *hfdcan);
+
+/**
+  * @brief	添加消息到 Tx FIFO/Queue 并激活相应的传输请求。
+  * @param	hfdcan			FDCAN句柄
+  * @param	pTxHeader		发送消息结构体
+  * @param	pTxData			发送数据地址
+  */
+HAL_StatusTypeDef HAL_FDCAN_AddMessageToTxFifoQ(FDCAN_HandleTypeDef *hfdcan, FDCAN_TxHeaderTypeDef *pTxHeader, 
+uint8_t *pTxData);
+
+/**
+  * @brief	获取接收到的数据
+  * @param	hfdcan			FDCAN句柄
+  * @param	RxLocation		读取位置，选择FDCAN_RX_...(FIFO0\FIFO1\BUFFERx)
+  * @param	pRxHeader		接收消息结构体
+  * @param	pRxData			接收数据地址
+  */
+HAL_StatusTypeDef HAL_FDCAN_GetRxMessage(FDCAN_HandleTypeDef *hfdcan, uint32_t RxLocation, 
+FDCAN_RxHeaderTypeDef *pRxHeader, uint8_t *pRxData);
+```
+
+```c
+/**
+  * @brief	FIFO接收中断回调函数
+  * @param	hfdcan			FDCAN句柄
+  * @param	RxFifo0ITs		中断类型
+  * @note	使用时，应判断中断类型，不判断中断句柄
+  */
+void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs);
+```
+
+### 配置流程
+
+1. 定义过滤器，发送消息；
+2. 配置过滤器，选择中断触发源，开启FDCAN；
+3. 发送消息；
+4. 在回调函数中接收消息。
