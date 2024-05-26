@@ -92,3 +92,39 @@ Cache支持4种基本操作：**使能，禁止，清空，无效化。**
 
    > - Cache已变化，SRAM 数据未更新：DMA搬运数据前，将 Cache 相对应数据更新到SRAM。(`SCB_CleanDCache `/ `SCB_CleanInvalidateDCache`)；
    > - SRAM数据已变化，Cache 未更新：DMA搬运数据后，cache数据无效，需从SRAM中获取。(`SCB_InvalidateDCache` / `SCB_CleanInvalidateDCache`)。
+
+## 常见问题解决
+
+<font color=LightGreen>1. 使用串口DMA空闲接收时的注意事项</font>
+
+> - (gcc) 将数据定义在DMA能够访问的区域；
+>
+>   ```c
+>   // gcc 编译链下将数据定义在 _D1_Area 区域
+>   __section("._D1_Area") uint8_t buffer[512] = {0};
+>   ```
+>
+>   链接文件应做相应更改：
+>
+>   ```ld
+>     // 在 RAM_D1(0x24000000)内定义 _D1_Area 区域
+>     ._D1_Area :
+>     {
+>       . = ALIGN(4);
+>       . = ALIGN(4);
+>     } >RAM_D1 
+>   ```
+>
+> - 数据存储的区域应做以下MPU配置：
+>
+> ![NULL](./assets/picture_8.jpg)
+>
+> **一定要禁止缓冲buffer！**
+>
+> - DMA空闲接收前，进行Cache维护：
+>
+> ```c
+> SCB_InvalidateDCache();
+> //__HAL_UNLOCK(huart);
+> HAL_UARTEx_ReceiveToIdle_DMA(&huart1, (uint8_t *)buffer, 512);
+> ```
